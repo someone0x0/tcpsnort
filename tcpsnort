@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Function for sniffing network traffic with limit
+sniffer() {
+    local host_ip="$1"
+    local net_name="$2"
+    local num_packet="$3"
+    tcpdump -i "$net_name" \( icmp or tcp port 22 \) and dst host "$host_ip" -w /$USER/sniffing.pcap -c "$num_packet"
+}
+
+# Function for sniffing network traffic without limit
+sniffer_no_limit(){
+    local host_ip="$1"
+    local net_name="$2"
+    echo "---> CTRL + Z to Stop"
+    echo "---> Capture saved as 'sniffing.pcap'"
+    tcpdump -i "$net_name" \( icmp or tcp port 22 \) and dst host "$host_ip" -w /$USER/sniffing.pcap
+}
+
+# Function for analyzing network traffic
+analysis() {
+    local path="$1"
+    snort -r "${path='/$USER/sniffing.pcap'}" -c /etc/snort/snort.conf -A full -l /$USER/log/
+    cat /$USER/log/alert
+}
+
+# Function to run the NIDS (Network Intrusion Detection System)
+IDS() {
+    snort -c /etc/snort/snort.conf -A console -l /$USER/log/ -q
+}
+
+# Check for root privileges
+if [ "$(id -u)" -ne "0" ]; then
+    echo "This script must be run as root. Exiting."
+    exit 1
+fi
+
+# Display menu and read user choice
+echo " "
+echo "████████╗ ██████╗██████╗    ███████╗███╗   ██╗ ██████╗ ██████╗ ████████╗
+╚══██╔══╝██╔════╝██╔══██╗   ██╔════╝████╗  ██║██╔═══██╗██╔══██╗╚══██╔══╝
+   ██║   ██║     ██████╔╝   ███████╗██╔██╗ ██║██║   ██║██████╔╝   ██║   
+   ██║   ██║     ██╔═══╝    ╚════██║██║╚██╗██║██║   ██║██╔══██╗   ██║   
+   ██║   ╚██████╗██║███████╗███████║██║ ╚████║╚██████╔╝██║  ██║   ██║   
+   ╚═╝    ╚═════╝╚═╝╚══════╝╚══════╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   
+by S O M E O И E & Zaid"
+mkdir /$USER/log
+echo "Enter The Mode:"
+echo "[1] Sniffing Mode"
+echo "[2] Analysis Mode"
+echo "[3] Detecting Mode"
+read -p 'Mode: ' mode_from_user
+
+# Execute based on user choice
+case $mode_from_user in 
+    '1')
+        echo "Sniffing Mode Running"
+        read -p 'Enter the IP address to capture from: ' ip_address
+        read -p "Enter Network Card Interface name: " net_name
+        read -p "How many packets to capture (default: no limit): " num_packet
+        
+        if [[ -z "$num_packet" || "$num_packet" -le 0 ]]; then
+            sniffer_no_limit "$ip_address" "$net_name"
+            
+        else
+            sniffer "$ip_address" "$net_name" "$num_packet"
+            read -p "Analyze the captured file? (y/n): " option
+            
+            if [[ $option == 'y' ]]; then
+                analysis "sniffing.pcap"
+            else 
+                echo "Capture saved as 'sniffing.pcap'"
+            fi
+        fi
+        
+        ;;
+    '2')
+        echo "Analysis Mode Running"
+        read -p "Pcap file path: " path
+        analysis "$path"
+        ;;
+    '3')
+        echo "NIDS Mode Running"
+        IDS
+        ;;
+    *)
+        echo "Invalid mode selected. Please choose [1], [2], or [3]."
+        ;;
+esac
+
