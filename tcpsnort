@@ -20,7 +20,7 @@ sniffer_no_limit(){
 # Function for analyzing network traffic
 analysis() {
     local path="$1"
-    snort -r "${path='/$USER/sniffing.pcap'}" -c /etc/snort/snort.conf -A full -l /$USER/log/
+    snort -r "${path='/$USER/sniffing.pcap'}" -c /etc/snort/snort.conf -A full -l /$USER/log/ > /tmp/null
     cat /$USER/log/alert
 }
 
@@ -43,8 +43,10 @@ echo "████████╗ ██████╗██████╗    
    ██║   ██║     ██╔═══╝    ╚════██║██║╚██╗██║██║   ██║██╔══██╗   ██║   
    ██║   ╚██████╗██║███████╗███████║██║ ╚████║╚██████╔╝██║  ██║   ██║   
    ╚═╝    ╚═════╝╚═╝╚══════╝╚══════╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝
-by S O M E O И E & Zaid"
+by S O M E O И E & Zaid
 E-mail:someone0x00@proton.me
+E-mail:zaid.h.hamzeh@gmail.com
+"
 mkdir /$USER/log
 echo "Enter The Mode:"
 echo "[1] Sniffing Mode"
