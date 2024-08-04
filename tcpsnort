@@ -5,28 +5,36 @@ sniffer() {
     local host_ip="$1"
     local net_name="$2"
     local num_packet="$3"
-    tcpdump -i "$net_name" \( icmp or tcp port 22 \) and dst host "$host_ip" -w /$USER/sniffing.pcap -c "$num_packet"
+    tcpdump -i "$net_name" \( icmp or tcp port 22 \) and dst host "$host_ip" -w "$HOME/sniffing.pcap" -c "$num_packet"
 }
 
 # Function for sniffing network traffic without limit
-sniffer_no_limit(){
+sniffer_no_limit() {
     local host_ip="$1"
     local net_name="$2"
     echo "---> CTRL + Z to Stop"
     echo "---> Capture saved as 'sniffing.pcap'"
-    tcpdump -i "$net_name" \( icmp or tcp port 22 \) and dst host "$host_ip" -w /$USER/sniffing.pcap
+    tcpdump -i "$net_name" \( icmp or tcp port 22 \) and dst host "$host_ip" -w "$HOME/sniffing.pcap"
 }
 
 # Function for analyzing network traffic
 analysis() {
     local path="$1"
-    snort -r "${path='/$USER/sniffing.pcap'}" -c /etc/snort/snort.conf -A full -l /$USER/log/ > /tmp/null
-    cat /$USER/log/alert
+    snort -r "${path:-$HOME/sniffing.pcap}" -c /etc/snort/snort.conf -A full -l "$HOME/log/"
+if [ -f "$HOME/log/alert" ]; then
+    cat "$HOME/log/alert"
+    mv "$HOME/log/alert" "$HOME/log/alert.1"
+echo "File named alert.1"	
+else
+    echo "No Suspicious Found"
+fi
+    
+
 }
 
 # Function to run the NIDS (Network Intrusion Detection System)
 IDS() {
-    snort -c /etc/snort/snort.conf -A console -l /$USER/log/ -q
+    snort -c /etc/snort/snort.conf -A console -l "$HOME/log/" -q
 }
 
 # Check for root privileges
@@ -47,7 +55,7 @@ by S O M E O И E & Zaid
 E-mail:someone0x00@proton.me
 E-mail:zaid.h.hamzeh@gmail.com
 "
-mkdir /$USER/log
+mkdir -p "$HOME/log"
 echo "Enter The Mode:"
 echo "[1] Sniffing Mode"
 echo "[2] Analysis Mode"
@@ -61,21 +69,19 @@ case $mode_from_user in
         read -p 'Enter the IP address to capture from: ' ip_address
         read -p "Enter Network Card Interface name: " net_name
         read -p "How many packets to capture (default: no limit): " num_packet
-        
-        if [[ -z "$num_packet" || "$num_packet" -le 0 ]]; then
+
+        if ! [[ "$num_packet" =~ ^[0-9]+$ ]]; then
             sniffer_no_limit "$ip_address" "$net_name"
-            
         else
             sniffer "$ip_address" "$net_name" "$num_packet"
             read -p "Analyze the captured file? (y/n): " option
-            
+
             if [[ $option == 'y' ]]; then
-                analysis "sniffing.pcap"
+                analysis "$HOME/sniffing.pcap"
             else 
                 echo "Capture saved as 'sniffing.pcap'"
             fi
         fi
-        
         ;;
     '2')
         echo "Analysis Mode Running"
@@ -90,4 +96,3 @@ case $mode_from_user in
         echo "Invalid mode selected. Please choose [1], [2], or [3]."
         ;;
 esac
-
