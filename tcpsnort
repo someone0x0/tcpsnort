@@ -5,31 +5,39 @@ sniffer() {
     local host_ip="$1"
     local net_name="$2"
     local num_packet="$3"
-    tcpdump -i "$net_name" \( icmp or tcp port 22 \) and dst host "$host_ip" -w "$HOME/sniffing.pcap" -c "$num_packet"
+    tcpdump -i "$net_name" \( icmp or tcp or udp \) and dst host "$host_ip" -w "$HOME/sniffing.pcap" -c "$num_packet"
 }
 
-# Function for sniffing network traffic without limit
-sniffer_no_limit() {
-    local host_ip="$1"
-    local net_name="$2"
-    echo "---> CTRL + Z to Stop"
-    echo "---> Capture saved as 'sniffing.pcap'"
-    tcpdump -i "$net_name" \( icmp or tcp port 22 \) and dst host "$host_ip" -w "$HOME/sniffing.pcap"
-}
 
 # Function for analyzing network traffic
 analysis() {
-    local path="$1"
-    snort -r "${path:-$HOME/sniffing.pcap}" -c /etc/snort/snort.conf -A full -l "$HOME/log/"
-if [ -f "$HOME/log/alert" ]; then
-    cat "$HOME/log/alert"
-    mv "$HOME/log/alert" "$HOME/log/alert.1"
-echo "File named alert.1"	
-else
-    echo "No Suspicious Found"
-fi
-    
+    SOURCE_DIR="$HOME/log"
+    TARGET_DIR="$HOME/log/logs_old"
+    ALERT_FILE="$SOURCE_DIR/alert"
+    TARGET_FILE="$TARGET_DIR/alert.log"
 
+    # Ensure the target directory exists
+ 
+
+    # Run Snort analysis
+    local path="$1"
+    echo "Running Snort on ${path:-$HOME/sniffing.pcap}"
+    snort -r "${path:-$HOME/sniffing.pcap}" -c /etc/snort/snort.conf -A full -l "$SOURCE_DIR"
+
+    # Check if the alert file exists
+    if [ -s "$ALERT_FILE" ]; then
+	# Print The Result 
+	cat "$ALERT_FILE"        
+	# Move the alert file to the target directory
+        mv "$ALERT_FILE" "$TARGET_FILE"
+        # Print the path of the moved file
+        echo "File moved successfully to $TARGET_FILE"
+	echo "Suspicious Found !"
+    else
+        # Print no suspicious found message
+	rm $ALERT_FILE
+        echo "No Suspicious Found"
+    fi
 }
 
 # Function to run the NIDS (Network Intrusion Detection System)
@@ -68,11 +76,14 @@ case $mode_from_user in
         echo "Sniffing Mode Running"
         read -p 'Enter the IP address to capture from: ' ip_address
         read -p "Enter Network Card Interface name: " net_name
-        read -p "How many packets to capture (default: no limit): " num_packet
+        read -p "How many packets to capture : " num_packet
+	if  ! [[ "$num_packet" =~ ^[0-9]+$ ]]; then 
 
-        if ! [[ "$num_packet" =~ ^[0-9]+$ ]]; then
-            sniffer_no_limit "$ip_address" "$net_name"
-        else
+        while ! [[ "$num_packet" =~ ^[0-9]+$ ]];
+	do           
+ 	read -p "How many packets to capture, Please enter valid number (1-999999):" num_packet
+        done 
+	else
             sniffer "$ip_address" "$net_name" "$num_packet"
             read -p "Analyze the captured file? (y/n): " option
 
